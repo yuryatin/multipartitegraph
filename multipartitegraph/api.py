@@ -35,7 +35,7 @@ class Net:
                 try:
                     np.dot(arrays[i-1].values, array.values)
                 except:
-                    raise Error("the dimentions of the matrices %d and %d dimentions don't match each other" % (i, i+1))
+                    raise ValueError("The dimentions of the matrices %d and %d don't match each other" % (i, i+1))
             self.ydim[i] = array.shape[0]
             self.pivot = pd.concat([self.pivot, array.reset_index().melt(id_vars='source', var_name='target', value_name='linked')])
         self.ydim[i+1] = array.shape[1]
