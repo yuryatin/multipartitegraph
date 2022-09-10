@@ -32,4 +32,4 @@ d_layer_df.columns = ['e1','e2','e3']
 myNet = mp.Net([a_layer_df, b_layer_df, c_layer_df, d_layer_df])
 myNet.plot()
 ```
-![multipartite](https://user-images.githubusercontent.com/14263965/189504615-77254714-2a3f-43c2-abe9-088ed0b398a0.png)
+![multipartite](https://user-images.githubusercontent.com/14263965/189505030-f207aca6-d9d0-431e-95e9-5e693eb47e06.png)
