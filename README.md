@@ -1,4 +1,4 @@
-# How to use
+# How to use it
 Very easy. You just need to create consecutive pandas DataFrames, where each next DataFrame has the number of rows equal to the number of columns in the previous DataFrames (and their identical names — otherwise the package will warn you), and submit them into the class `Net()` as a list.
 ```python
 import pandas as pd
