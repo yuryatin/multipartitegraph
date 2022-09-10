@@ -1,5 +1,6 @@
 import copy
 import string
+import warnings
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -25,17 +26,49 @@ class myNode:
 
 class Net:
     def __init__(self, arrays:list):
+        if not isinstance(arrays, list):
+            raise TypeError("The parameter arrays of object of class Net accepts only a regular Python list of pandas DataFrame. You try to supply %s instead. Please correct." % (type(arrays)))
+        if not len(arrays):
+            raise TypeError("You supply to the parameter arrays of object of class Net an empty Python list while it should contain pandas DataFrames. Please correct")
+        self.notPandas = []
+        self.zeroPandas = []
+        self.mismatchPandas = []
+        self.namesInPandas = []
+        for i, array in enumerate(arrays):
+            if not isinstance(array, pd.DataFrame):
+                self.notPandas.append(str(i))
+            if i:
+                try:
+                    np.dot(arrays[i-1].values, array.values)
+                except:
+                    self.mismatchPandas.append(str(i-1) + ' and ' + str(i))
+                else:
+                    if np.any(self.namesTest != array.index.values):
+                        arrays[i-1].columns = array.index.values
+                        self.namesInPandas.append(str(i))
+            if array.shape[0] < 1 or array.shape[1] < 1:
+                self.zeroPandas.append(str(i))
+            self.namesTest = array.columns.values
+        if len(self.notPandas):
+            raise TypeError("The parameter arrays of object of class Net accepts only a list of pandas DataFrame. You try to supply a list where the elements %s are not pandas DataFrames. Please correct." % (', '.join(self.notPandas),))
+        if len(self.zeroPandas):
+            raise TypeError("The parameter arrays of object of class Net accepts only a list of non-empty pandas DataFrame. You try to supply a list where the elements %s look like empty pandas DataFrames. Please correct." % (', '.join(self.zeroPandas),))
+        if len(self.mismatchPandas):
+            raise ValueError("The dimentions of the matrices %s don't match each other" % (', '.join(self.mismatchPandas),))
+        if len(self.namesInPandas):
+            warnings.warn("The parameter arrays of object of class Net expects a list of pandas DataFrame, in which each next DataFrame has index names identical to the column names of the previous DataFrame. You try to supply a list where the DataFrames %s don't seem to have column names satisfying this condition. The script will use only the column names ingnoring the row names where they don't match. Please be warned and check whether the order of your DataFrames is correct in the list." % (', '.join(self.namesInPandas),))
         self.nodes = dict()
         self.arrays = copy.deepcopy(arrays)
         self.xdim = len(arrays) + 1
         self.ydim = np.zeros(self.xdim, dtype=np.int64)
         self.pivot = pd.DataFrame(columns=['source', 'target', 'linked'], dtype=('str', np.int64))
+        self._ids = []
         for i, array in enumerate(arrays):
             if i:
-                try:
-                    np.dot(arrays[i-1].values, array.values)
-                except:
-                    raise ValueError("The dimentions of the matrices %d and %d don't match each other" % (i, i+1))
+                self._ids.append(array.columns.values)
+            else:
+                self._ids.append(array.index.values)
+                self._ids.append(array.columns.values)
             self.ydim[i] = array.shape[0]
             self.pivot = pd.concat([self.pivot, array.reset_index().melt(id_vars='source', var_name='target', value_name='linked')])
         self.ydim[i+1] = array.shape[1]
@@ -52,7 +85,7 @@ class Net:
             else:
                 self.y_coords.append(np.linspace(0.1, 0.9, self.ydim[x] * 2 + 1)[1::2])
             for y in range(self.ydim[x]):
-                _id = string.ascii_lowercase[x] + str(y+1)
+                _id = self._ids[x][y].lower()
                 self.nodes[_id] = myNode(self.x_coord[x], self.y_coords[x][y], _id)
         for row in range(self.pivot.shape[0]):
             self.nodes[self.pivot.index[row]].next.append(self.nodes[self.pivot.iloc[row]['target']])
