@@ -11,11 +11,11 @@ class myNode:
         self.x = x
         self.y = y
         self.id = _id
-        self.label = _id.upper()
+        self.label = _id
         self.next = []
         
-    def plot(self, ax):
-        ax.text(self.x, self.y, self.label, transform=ax.transAxes, fontsize=18, bbox=dict(boxstyle='circle', facecolor='wheat', alpha=1))
+    def plot(self, ax, boxstyle):
+        ax.text(self.x, self.y, self.label, transform=ax.transAxes, fontsize=18, va='center', ha='center', bbox=dict(boxstyle=boxstyle, facecolor='wheat', alpha=1))
         
     def add_child(self, x):
         self.next.append(x)
@@ -63,38 +63,44 @@ class Net:
         self.ydim = np.zeros(self.xdim, dtype=np.int64)
         self.pivot = pd.DataFrame(columns=['source', 'target', 'linked'], dtype=('str', np.int64))
         self._ids = []
+        self.labels = set()
         for i, array in enumerate(arrays):
             if i:
                 self._ids.append(array.columns.values)
+                self.labels.update(array.columns.values)
             else:
                 self._ids.append(array.index.values)
                 self._ids.append(array.columns.values)
+                self.labels.update(array.index.values)
+                self.labels.update(array.columns.values)
             self.ydim[i] = array.shape[0]
             self.pivot = pd.concat([self.pivot, array.reset_index().melt(id_vars='source', var_name='target', value_name='linked')])
         self.ydim[i+1] = array.shape[1]
-        max_y = 0
+        self.max_label = np.array(list(map(len, self.labels))).max()
+        self.boxstyle = 'circle' if self.max_label < 3 else 'round'
+        self.max_y = 0
         for i in range(self.xdim):
-            max_y = max(max_y, self.ydim[i])
-        odd = bool(max_y % 2)
+            self.max_y = max(self.max_y, self.ydim[i])
+        self.odd = bool(self.max_y % 2)
         self.pivot = self.pivot.loc[self.pivot['linked']==1, ['source', 'target']].set_index('source')
         self.x_coord = np.linspace(0.05, 0.95, self.xdim)
         self.y_coords = []
         for x in range(self.xdim):
-            if odd == bool(self.ydim[x] % 2):
+            if self.odd == bool(self.ydim[x] % 2):
                 self.y_coords.append(np.linspace(0.1, 0.9, self.ydim[x]))
             else:
                 self.y_coords.append(np.linspace(0.1, 0.9, self.ydim[x] * 2 + 1)[1::2])
             for y in range(self.ydim[x]):
-                _id = self._ids[x][y].lower()
+                _id = self._ids[x][y]
                 self.nodes[_id] = myNode(self.x_coord[x], self.y_coords[x][y], _id)
         for row in range(self.pivot.shape[0]):
-            self.nodes[self.pivot.index[row]].next.append(self.nodes[self.pivot.iloc[row]['target']])
+            self.nodes[self.pivot.index[row]].add_child(self.nodes[self.pivot.iloc[row]['target']])
             
                 
     def plot(self):
-        self.fig, self.ax = plt.subplots()
+        self.fig, self.ax = plt.subplots(figsize=(self.max_label * 0.2 + self.xdim * 1.1 + self.max_y * 0.1, self.max_y * 1.1))
         for i in self.nodes: 
-            self.nodes[i].plot(self.ax)
+            self.nodes[i].plot(self.ax, self.boxstyle)
             for nextNode in self.nodes[i].next:
                 self.ax.plot([self.nodes[i].x, nextNode.x], [self.nodes[i].y, nextNode.y], 'k-', lw=2, transform=self.ax.transAxes)
         plt.axis('off')
